@@ -9,9 +9,9 @@
 #include <vector>
 class CSV {
 public:
-  std::vector<std::pair<int, std::vector<int>>> data;
+  std::vector<std::pair<int, std::vector<double>>> data;
   CSV(const std::string& inputFile, int start, int end);
-  std::vector<std::pair<int, std::vector<int>>> getData();
+  std::vector<std::pair<int, std::vector<double>>> getData();
 };
 
 #endif

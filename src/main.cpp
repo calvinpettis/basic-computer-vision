@@ -6,11 +6,11 @@
 #include "../include/network.h"
 int main(void) {
   std::string filepath = "../samples/mnist_train.csv";
-  std::vector<std::pair<int, std::vector<int>>> training_data;
-  std::vector<std::pair<int, std::vector<int>>> test_data;
-  CSV train(filepath, 0, 1000);
+  std::vector<std::pair<int, std::vector<double>>> training_data;
+  std::vector<std::pair<int, std::vector<double>>> test_data;
+  CSV train(filepath, 0, 40000);
   training_data = train.getData();
-  CSV test(filepath, 1001, 1500);
+  CSV test(filepath, 40000, 50000);
   test_data = test.getData();
   Network net({784,30,10});
   net.stochastic_gradient_descent(training_data, 30, 10, 1.0, test_data);

@@ -52,9 +52,9 @@ arma::mat Network::feedforward(arma::mat a) {
  * @param test_data, the data to validate training on
  * @return none
  */
-void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vector<int>>>& training_data, int epochs, int mini_batch_size, float eta, std::vector<std::pair<int, std::vector<int>>> test_data) {
+void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vector<double>>>& training_data, int epochs, int mini_batch_size, float eta, std::vector<std::pair<int, std::vector<double>>> test_data) {
   int n_test, n;
-  std::vector<std::pair<int, std::vector<int>>> mini_batches;
+  std::vector<std::pair<int, std::vector<double>>> mini_batches;
   if (!test_data.empty()) {
     n_test = test_data.size();
   }
@@ -82,7 +82,7 @@ void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vecto
  * @param mini_batch, the subset of training data
  * @param eta, the learning rate
  */
-void Network::update_mini_batch(std::vector<std::pair<int, std::vector<int>>> mini_batch, float eta) {
+void Network::update_mini_batch(std::vector<std::pair<int, std::vector<double>>> mini_batch, float eta) {
   std::vector<arma::mat> nabla_b = biases;
   std::vector<arma::mat> nabla_w = weights;
   for (int i = 0; i < biases.size(); i++) {
@@ -99,7 +99,7 @@ void Network::update_mini_batch(std::vector<std::pair<int, std::vector<int>>> mi
   arma::mat dnw;
   for (int i = 0; i < mini_batch.size(); i++) {
     int y = mini_batch[i].first;
-    std::vector<int> x = mini_batch[i].second;
+    std::vector<double> x = mini_batch[i].second;
     auto result = backprop(x, y);
     std::vector<arma::mat> delta_nabla_b = result.first;
     std::vector<arma::mat> delta_nabla_w = result.second;
@@ -128,7 +128,7 @@ void Network::update_mini_batch(std::vector<std::pair<int, std::vector<int>>> mi
 /*
 * 
 */
-std::pair<std::vector<arma::mat>,std::vector<arma::mat>> Network::backprop(std::vector<int>& x, int y) {
+std::pair<std::vector<arma::mat>,std::vector<arma::mat>> Network::backprop(std::vector<double>& x, int y) {
   std::vector<arma::mat> nabla_b = biases;
   std::vector<arma::mat> nabla_w = weights;
   for (int i = 0; i < biases.size(); i++) {
@@ -163,7 +163,7 @@ std::pair<std::vector<arma::mat>,std::vector<arma::mat>> Network::backprop(std::
 /*
  *
  */
-int Network::evaluate(std::vector<std::pair<int, std::vector<int>>>& test_data) {
+int Network::evaluate(std::vector<std::pair<int, std::vector<double>>>& test_data) {
  //       <our num, correct num> 
   std::vector<std::pair<int,int>> test_results;
 

@@ -22,7 +22,7 @@ CSV::CSV(const std::string& inputFile, int start, int end) {
     if (lineNum >= end) {
       break;
     }
-    std::vector<int> row;
+    std::vector<double> row;
     std::stringstream ss(line);
     std::string cellValue;
     int correctNum;
@@ -32,7 +32,8 @@ CSV::CSV(const std::string& inputFile, int start, int end) {
           correctNum = std::stoi(cellValue);
         }
         else {
-          row.push_back(std::stoi(cellValue));
+          //need to normalize to 0-1 for better model training
+          row.push_back(std::stoi(cellValue) / 255.0);
         }
       }
       data.push_back(std::make_pair(correctNum, row));
@@ -41,6 +42,6 @@ CSV::CSV(const std::string& inputFile, int start, int end) {
   myfile.close();
 }
 
-std::vector<std::pair<int, std::vector<int>>> CSV::getData() {
+std::vector<std::pair<int, std::vector<double>>> CSV::getData() {
   return data;
 }
