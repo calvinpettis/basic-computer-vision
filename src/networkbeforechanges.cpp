@@ -1,5 +1,6 @@
 #include "../include/network.h"
 #include <algorithm>
+#include <iterator>
 #include <random>
 #include <utility>
 #include <vector>
@@ -44,7 +45,6 @@ arma::mat Network::feedforward(arma::mat a) {
 }
 /*
  * Compute gradient, then move in the opposite direction to minimize the cost function (simulating the "ball rolling down the hill")
- *  - uses randomly sampled "mini batch" to be more efficient
  * @param training_data, the subset of the MNIST dataset to train on.
  * @param epochs, the number of training steps to take
  * @param mini_batch_size, the number of training data points for one mini batch
@@ -67,7 +67,7 @@ void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vecto
       mini_batches.push_back(training_data[j]);
     }
     for (int k = 0; k < mini_batches.size(); k++) {
-      Network::update_mini_batch(mini_batches, eta);
+      Network::update_mini_batch(mini_batches[k]);
     }
     if (!test_data.empty()) {
       printf("Epoch {%d}: {%d} / {%d}\n", i, Network::evaluate(test_data), n_test);
@@ -82,7 +82,7 @@ void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vecto
  * @param mini_batch, the subset of training data
  * @param eta, the learning rate
  */
-void Network::update_mini_batch(std::vector<std::pair<int, std::vector<int>>> mini_batch, float eta) {
+void Network::update_mini_batch(std::vector<std::pair<int, std::vector<int>>>& mini_batch, float eta) {
   std::vector<arma::mat> nabla_b = biases;
   std::vector<arma::mat> nabla_w = weights;
   for (int i = 0; i < biases.size(); i++) {
@@ -148,13 +148,13 @@ std::pair<std::vector<arma::mat>,std::vector<arma::mat>> Network::backprop(std::
     activation = Network::sigmoid(z);
     activations.push_back(activation);
   }
-  arma::mat delta = Network::cost_derivative(activations[activations.size() - 1], y) % sigmoid_prime(zs[zs.size() - 1]);
+  std::vector<arma::mat> delta = Network::cost_derivative(activations[activations.size() - 1], y) * sigmoid_prime(zs[zs.size() - 1])
   nabla_b[nabla_b.size() - 1] = delta;
-  nabla_w[nabla_w.size() - 1] = delta * trans(activations[activations.size() - 2]);
+  nabla_w[nabla_w.size() - 1] = delta * arma::trans(activations[activations.size() - 2]);
   for (int l = 2; l < num_layers; l++) {
     arma::mat z = zs[zs.size() - l];
-    arma::mat sp = sigmoid_prime(z);
-    delta = (arma::trans(weights[weights.size() - l + 1]) * delta) % sp;
+    sp = sigmoid_prime(z);
+    delta = (arma::trans(weights[weights.size() - l + 1]) * delta) * sp;
     nabla_b[nabla_b.size() - l] = delta;
     nabla_w[nabla_w.size() - l] = delta * arma::trans(activations[activations.size() - l - 1]);
   }
@@ -183,11 +183,13 @@ int Network::evaluate(std::vector<std::pair<int, std::vector<int>>>& test_data) 
 }
 
 
-arma::mat Network::cost_derivative(arma::vec output_activation, int y) {
+std::vector<arma::mat> Network::cost_derivative(arma::vec output_activation, int y) {
+  std::vector<arma::mat> vec;
   for (int i = 0; i < output_activation.size(); i++) {
     output_activation[i] -= y;
   }
-  return output_activation;
+  vec.push_back(output_activation);
+  return vec;
 }
 /*
 * Normalize the sum of the matrix to something non linear 
@@ -197,5 +199,5 @@ arma::mat Network::sigmoid(arma::mat z) {
 }
 
 arma::mat Network::sigmoid_prime(arma::mat z) {
-  return Network::sigmoid(z)%(1-Network::sigmoid(z));
+  return Network::sigmoid(z)*(1-Network::sigmoid(z));
 }

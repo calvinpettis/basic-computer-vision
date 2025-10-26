@@ -21,5 +21,5 @@ yourPackageManagerHere install armadillo cmake
 ```
 3. Run build script
 ```bash
-./runProj
+chmod +x build.sh && ./build.sh
 ```
