@@ -9,7 +9,7 @@ public:
 
   std::vector<int> sizes;
 
-  std::vector<arma::mat> biases;
+  std::vector<arma::vec> biases;
 
   std::vector<arma::mat> weights;
 
@@ -17,19 +17,19 @@ public:
 
   arma::mat feedforward(arma::mat a);
 
-  void stochastic_gradient_descent(std::vector<std::pair<int, std::vector<double>>>& training_data, int epochs, int mini_batch_size, float eta, std::vector<std::pair<int, std::vector<double>>> test_data = {});
+  void stochastic_gradient_descent(std::vector<std::pair<int, std::vector<double>>>& training_data, int epochs, int mini_batch_size, double eta, std::vector<std::pair<int, std::vector<double>>> test_data = {});
 
-  void update_mini_batch(std::vector<std::pair<int, std::vector<double>>> mini_batch, float eta);
+  void update_mini_batch(std::vector<std::pair<int, std::vector<double>>> mini_batch, double eta);
 
-  std::pair<std::vector<arma::mat>,std::vector<arma::mat>> backprop(std::vector<double>& x, int y);
+  std::pair<std::vector<arma::vec>,std::vector<arma::mat>> backprop(std::vector<double>& x, int y);
 
   int evaluate(std::vector<std::pair<int, std::vector<double>>>& test_data);
 
 arma::mat cost_derivative(arma::vec output_activation, int y);
 
-  arma::mat sigmoid(arma::mat z);
+  arma::vec sigmoid(const arma::vec& z);
 
-  arma::mat sigmoid_prime(arma::mat z);
+  arma::vec sigmoid_prime(const arma::vec& z);
 
 };
 #endif

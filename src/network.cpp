@@ -23,7 +23,7 @@ Network::Network(std::vector<int> size) {
   //we dont want weights and biases for input layer of neurons, so start with second item in array
   for (int i = 1; i < sizes.size(); i++) {
     //matrices of n biases for each neuron of each layer
-    arma::mat b = arma::randn(sizes[i], 1);
+    arma::vec b = arma::randn(sizes[i], 1);
     biases.push_back(b);
     //matrices of the weights connecting two layers
     arma::mat c = arma::randn(sizes[i], sizes[i - 1]);
@@ -52,9 +52,8 @@ arma::mat Network::feedforward(arma::mat a) {
  * @param test_data, the data to validate training on
  * @return none
  */
-void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vector<double>>>& training_data, int epochs, int mini_batch_size, float eta, std::vector<std::pair<int, std::vector<double>>> test_data) {
+void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vector<double>>>& training_data, int epochs, int mini_batch_size, double eta, std::vector<std::pair<int, std::vector<double>>> test_data) {
   int n_test, n;
-  std::vector<std::pair<int, std::vector<double>>> mini_batches;
   if (!test_data.empty()) {
     n_test = test_data.size();
   }
@@ -63,17 +62,21 @@ void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vecto
   std::mt19937 randSeed(rand());
   for (int i = 0; i < epochs; i++) {
     shuffle(training_data.begin(), training_data.end(), randSeed);
-    for (int j = 0; j < mini_batch_size; j++) {
-      mini_batches.push_back(training_data[j]);
-    }
-    for (int k = 0; k < mini_batches.size(); k++) {
-      Network::update_mini_batch(mini_batches, eta);
+    // for (int j = 0; j < mini_batch_size; j++) {
+    //   mini_batches.push_back(training_data[j]);
+    // }
+    // for (int k = 0; k < mini_batches.size(); k++) {
+    //   Network::update_mini_batch(mini_batches, eta);
+    // }
+    for (int j = 0; j < n; j += mini_batch_size) {
+      std::vector<std::pair<int, std::vector<double>>> mini_batch(training_data.begin() + j, training_data.begin() + std::min(j + mini_batch_size, n));
+      Network::update_mini_batch(mini_batch, eta);
     }
     if (!test_data.empty()) {
-      printf("Epoch {%d}: {%d} / {%d}\n", i, Network::evaluate(test_data), n_test);
+      printf("Epoch %d: %d / %d\n", i, Network::evaluate(test_data), n_test);
     }
     else {
-      printf("Epoch {%d} complete", i);
+      printf("Epoch %d complete\n", i);
     }
   }
 }
@@ -82,14 +85,14 @@ void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vecto
  * @param mini_batch, the subset of training data
  * @param eta, the learning rate
  */
-void Network::update_mini_batch(std::vector<std::pair<int, std::vector<double>>> mini_batch, float eta) {
-  std::vector<arma::mat> nabla_b = biases;
+void Network::update_mini_batch(std::vector<std::pair<int, std::vector<double>>> mini_batch, double eta) {
+  std::vector<arma::vec> nabla_b = biases;
   std::vector<arma::mat> nabla_w = weights;
   for (int i = 0; i < biases.size(); i++) {
-    nabla_b[i] = biases[i].zeros();
+    nabla_b[i].zeros();
   }
   for (int i = 0; i < weights.size(); i++) {
-    nabla_w[i] = weights[i].zeros();
+    nabla_w[i].zeros();
   }
   arma::mat w;
   arma::mat b;
@@ -101,44 +104,37 @@ void Network::update_mini_batch(std::vector<std::pair<int, std::vector<double>>>
     int y = mini_batch[i].first;
     std::vector<double> x = mini_batch[i].second;
     auto result = backprop(x, y);
-    std::vector<arma::mat> delta_nabla_b = result.first;
+    std::vector<arma::vec> delta_nabla_b = result.first;
     std::vector<arma::mat> delta_nabla_w = result.second;
-    for (int j = 0; j < nabla_b.size(); j++) {
-      nb = nabla_b[j];
-      dnb = delta_nabla_b[j];
-      nabla_b[j] = nb + dnb;
-    }
-    for (int k = 0; k < nabla_w.size(); k++) {
-      nw = nabla_w[k];
+    for (int k = 0; k < biases.size(); k++) {
+      //nw = nabla_w[k];
       dnw = delta_nabla_w[k];
-      nabla_w[k] = nw + dnw;
+      nabla_w[k] += dnw;
+      dnb = delta_nabla_b[k];
+      nabla_b[k] += dnb;
     }
-  }
-  for (int i = 0; i < weights.size(); i++) {
-    w = weights[i];
-    nw = nabla_w[i];
-    weights[i] = (w-(eta/mini_batch.size()) * nw);
   }
   for (int i = 0; i < biases.size(); i++) {
-    b = biases[i];
-    nb = nabla_b[i];
-    biases[i] = (b-(eta/mini_batch.size()) * nb);
+    biases[i] -= eta / mini_batch.size() * nabla_b[i];
+    weights[i] -= eta / mini_batch.size() * nabla_w[i];
   }
 }
 /*
 * 
 */
-std::pair<std::vector<arma::mat>,std::vector<arma::mat>> Network::backprop(std::vector<double>& x, int y) {
-  std::vector<arma::mat> nabla_b = biases;
+std::pair<std::vector<arma::vec>,std::vector<arma::mat>> Network::backprop(std::vector<double>& x, int y) {
+  std::vector<arma::vec> nabla_b = biases;
   std::vector<arma::mat> nabla_w = weights;
   for (int i = 0; i < biases.size(); i++) {
-    nabla_b[i] = biases[i].zeros();
+    nabla_b[i].zeros();
   }
   for (int i = 0; i < weights.size(); i++) {
-    nabla_w[i] = weights[i].zeros();
+    nabla_w[i].zeros();
   }
   arma::vec activation = arma::conv_to<arma::vec>::from(x);
-  std::vector<arma::vec> activations = {arma::conv_to<arma::vec>::from(x)};
+  activation.reshape(x.size(), 1);
+  std::vector<arma::vec> activations;
+  activations.push_back(activation);
   std::vector<arma::vec> zs = {};
   for (int i = 0; i < biases.size(); i++) {
     arma::mat b = biases[i];
@@ -150,11 +146,11 @@ std::pair<std::vector<arma::mat>,std::vector<arma::mat>> Network::backprop(std::
   }
   arma::mat delta = Network::cost_derivative(activations[activations.size() - 1], y) % sigmoid_prime(zs[zs.size() - 1]);
   nabla_b[nabla_b.size() - 1] = delta;
-  nabla_w[nabla_w.size() - 1] = delta * trans(activations[activations.size() - 2]);
+  nabla_w[nabla_w.size() - 1] = delta * activations[activations.size() - 2].t();
   for (int l = 2; l < num_layers; l++) {
     arma::mat z = zs[zs.size() - l];
     arma::mat sp = sigmoid_prime(z);
-    delta = (arma::trans(weights[weights.size() - l + 1]) * delta) % sp;
+    delta = (weights[weights.size() - l + 1].t() * delta) % sp;
     nabla_b[nabla_b.size() - l] = delta;
     nabla_w[nabla_w.size() - l] = delta * arma::trans(activations[activations.size() - l - 1]);
   }
@@ -184,18 +180,20 @@ int Network::evaluate(std::vector<std::pair<int, std::vector<double>>>& test_dat
 
 
 arma::mat Network::cost_derivative(arma::vec output_activation, int y) {
-  for (int i = 0; i < output_activation.size(); i++) {
-    output_activation[i] -= y;
-  }
-  return output_activation;
+  // for (int i = 0; i < output_activation.size(); i++) {
+  //   output_activation[i] -= y;
+  // }
+  arma::vec correct = arma::zeros<arma::vec>(output_activation.n_rows);
+  correct(y) = 1.0;
+  return output_activation - correct;
 }
 /*
 * Normalize the sum of the matrix to something non linear 
 */
-arma::mat Network::sigmoid(arma::mat z) {
-  return 1.0f/(1.0f+exp(-z));
+arma::vec Network::sigmoid(const arma::vec& z) {
+  return 1.0f/(1.0f+arma::exp(-z));
 }
 
-arma::mat Network::sigmoid_prime(arma::mat z) {
+arma::vec Network::sigmoid_prime(const arma::vec& z) {
   return Network::sigmoid(z)%(1-Network::sigmoid(z));
 }
