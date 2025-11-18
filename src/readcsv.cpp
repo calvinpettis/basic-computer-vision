@@ -28,7 +28,7 @@ CSV::CSV(const std::string& inputFile, int start, int end) {
     int correctNum;
       for (int j = 0; j < 785; j++) {
         std::getline(ss, cellValue, ',');
-        if (j == 0) {
+        if (j == 784) {
           correctNum = std::stoi(cellValue);
         }
         else {

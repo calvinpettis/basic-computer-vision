@@ -1,6 +1,7 @@
 #include "../include/network.h"
 #include <algorithm>
 #include <random>
+#include <string>
 #include <utility>
 #include <vector>
 #include <armadillo>
@@ -9,11 +10,11 @@
 //using namespace arma;
 
 /* 
- * C++ implementation of Michael Neilsen's starter code
- * A simple neural network implementing a computer vision model for 28x28px images for handwritten digits.
- * (Using the MNIST dataset, converted to 0-255 greyscale values in CSV format)
+ * C++ implementation of Michael Neilsen's starter code for a Multi Layer Perceptron (MLP) from the "Neural Networks and Deep Learning" book
+ * A simple neural network implementing a computer vision model for 28x28px images for handwritten A-Z and 0-9.
+ * (Using the MNIST dataset, converted to 0-255 greyscale values in CSV format, normalized to 0-1)
  * @param: size, a list containing the amounts of neurons in each layer
- * Ex: Network([784, 100, 10] = 3 layers, 784 input neurons (28x28), 100 hidden neurons, 10 output neurons (0-9))  
+ * Ex: Network({784, 100, 10}) = 3 layers, 784 input neurons (28x28), 100 hidden neurons, 10 output neurons (0-9)  
  *
 */
 Network::Network(std::vector<int> size) {
@@ -26,7 +27,7 @@ Network::Network(std::vector<int> size) {
     arma::vec b = arma::randn(sizes[i], 1);
     biases.push_back(b);
     //matrices of the weights connecting two layers
-    arma::mat c = arma::randn(sizes[i], sizes[i - 1]);
+    arma::mat c = arma::randn(sizes[i], sizes[i - 1])/sqrt(sizes[i]);
     weights.push_back(c);
   }
 }
@@ -38,7 +39,7 @@ arma::mat Network::feedforward(arma::mat a) {
   for (int i = 0; i < weights.size(); i++) {
     arma::mat b = biases[i];
     arma::mat w = weights[i];
-    a = sigmoid((w * a)+b);
+    a = Network::sigmoid((w * a)+b);
   }
   return a;
 }
@@ -73,10 +74,14 @@ void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vecto
       Network::update_mini_batch(mini_batch, eta);
     }
     if (!test_data.empty()) {
-      printf("Epoch %d: %d / %d\n", i, Network::evaluate(test_data), n_test);
+      int numCorrect = Network::evaluate(test_data);
+      printf("Epoch %d: %d / %d (%.2f%% accuracy)\n", i + 1, numCorrect, n_test, (float) numCorrect / n_test * 100);
     }
     else {
-      printf("Epoch %d complete\n", i);
+      printf("Epoch %d complete\n", i + 1);
+      if (i == epochs - 1) {
+        Network::save_model();
+      }
     }
   }
 }
@@ -85,7 +90,7 @@ void Network::stochastic_gradient_descent (std::vector<std::pair<int, std::vecto
  * @param mini_batch, the subset of training data
  * @param eta, the learning rate
  */
-void Network::update_mini_batch(std::vector<std::pair<int, std::vector<double>>> mini_batch, double eta) {
+void Network::update_mini_batch(std::vector<std::pair<int, std::vector<double>>>& mini_batch, double eta) {
   std::vector<arma::vec> nabla_b = biases;
   std::vector<arma::mat> nabla_w = weights;
   for (int i = 0; i < biases.size(); i++) {
@@ -120,7 +125,11 @@ void Network::update_mini_batch(std::vector<std::pair<int, std::vector<double>>>
   }
 }
 /*
-* 
+* Since we know the correct answer already, we can feed foward through the network and compare our answer to the correct one (using a cost function)
+* We then calculate the direction of the gradient to get closer to the right answer and minimize the cost function.
+* @param x our input 
+* @param y the correct number for the input
+* @return <updated biases, updated weights>
 */
 std::pair<std::vector<arma::vec>,std::vector<arma::mat>> Network::backprop(std::vector<double>& x, int y) {
   std::vector<arma::vec> nabla_b = biases;
@@ -149,15 +158,17 @@ std::pair<std::vector<arma::vec>,std::vector<arma::mat>> Network::backprop(std::
   nabla_w[nabla_w.size() - 1] = delta * activations[activations.size() - 2].t();
   for (int l = 2; l < num_layers; l++) {
     arma::mat z = zs[zs.size() - l];
-    arma::mat sp = sigmoid_prime(z);
+    arma::mat sp = Network::sigmoid_prime(z);
     delta = (weights[weights.size() - l + 1].t() * delta) % sp;
     nabla_b[nabla_b.size() - l] = delta;
-    nabla_w[nabla_w.size() - l] = delta * arma::trans(activations[activations.size() - l - 1]);
+    nabla_w[nabla_w.size() - l] = delta * activations[activations.size() - l - 1].t();
   }
   return make_pair(nabla_b, nabla_w);
 }
 /*
- *
+ * Check our answer against the correct one. Sum up the amount correct
+ * @param test_data our test data
+ * @return sum the number correct out of the training data
  */
 int Network::evaluate(std::vector<std::pair<int, std::vector<double>>>& test_data) {
  //       <our num, correct num> 
@@ -178,8 +189,12 @@ int Network::evaluate(std::vector<std::pair<int, std::vector<double>>>& test_dat
   return sum;
 }
 
-
-arma::mat Network::cost_derivative(arma::vec output_activation, int y) {
+/*
+ * One hot encoded correct answer subtracted from our output.
+ * @param output_activation, our answer
+ * @param y the correct output
+ */
+arma::mat Network::cost_derivative(const arma::vec& output_activation, int y) {
   // for (int i = 0; i < output_activation.size(); i++) {
   //   output_activation[i] -= y;
   // }
@@ -187,13 +202,92 @@ arma::mat Network::cost_derivative(arma::vec output_activation, int y) {
   correct(y) = 1.0;
   return output_activation - correct;
 }
+
 /*
 * Normalize the sum of the matrix to something non linear 
+* @param z 
+* @return 
 */
 arma::vec Network::sigmoid(const arma::vec& z) {
   return 1.0f/(1.0f+arma::exp(-z));
 }
 
+/*
+* @param z
+* @return 
+*/
 arma::vec Network::sigmoid_prime(const arma::vec& z) {
   return Network::sigmoid(z)%(1-Network::sigmoid(z));
+}
+
+// /*
+// *
+// */
+// arma::vec relu(const arma::vec& z) {
+//
+// }
+// /*
+// *
+// */
+// arma::vec relu_prime(const arma::vec& z) {
+//
+// }
+//
+/*
+* Save a static version of the weights after training is complete.
+* @param none
+* @return none
+*/
+void Network::save_model() {
+  for (int i = 0; i < weights.size(); i++) {
+    std::string filename = "weight_layer_" + std::to_string(i) + ".bin";
+    if (weights[i].save(filename)) {
+      printf("Weight layer %d saved successfully.\n", i);
+    }
+    else {
+      printf("Error saving weight layer %d\n", i);
+    }
+  }
+  for (int i = 0; i < biases.size(); i++) {
+    std::string filename = "bias_layer_" + std::to_string(i) + ".bin";
+    if (biases[i].save(filename)) {
+      printf("Bias layer %d saved successfully.\n", i);
+    }
+    else {
+      printf("Error saving bias layer %d\n", i);
+    }
+  }
+}
+/*
+* load the static weights and biases for inference.
+* @param none
+* @return none
+*/
+void Network::load_model() {
+  for (int i = 0; i < weights.size(); i++) {
+    std::string filename = "weight_layer_" + std::to_string(i) + ".bin";
+    arma::mat layer;
+    if (layer.load(filename)) {
+      printf("Weight layer %d loaded successfully.\n", i);
+      weights.push_back(layer);
+    }
+    else {
+      fprintf(stderr, "Error loading weight layer %d\n", i);
+    }
+  }
+  for (int i = 0; i < biases.size(); i++) {
+    std::string filename = "bias_layer_" + std::to_string(i) + ".bin";
+    arma::vec layer;
+    if (layer.load(filename)) {
+      printf("Bias layer %d loaded successfully.\n", i);
+      biases.push_back(layer);
+    }
+    else {
+      fprintf(stderr, "Error loading bias layer %d\n", i);
+    }
+  }
+}
+
+void infer_letter(std::string filename) {
+
 }
